@@ -48,6 +48,12 @@ public:
         return token;
     }
 
+    std::shared_ptr<Player> RestorePlayer(const Player& player, Token token) {
+        std::shared_ptr<Player> player_ptr = std::make_shared<Player>(player);
+        token_to_player_[token] = player_ptr;
+        return player_ptr;
+    }
+
     const std::unordered_map<Token, std::shared_ptr<Player>, TokenHasher>& GetTokenToPlayerMap() const {
         return token_to_player_;
     }
