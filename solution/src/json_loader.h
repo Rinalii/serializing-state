@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include "domain_model/model_game.h"
+#include "application_model/game.h"
 
 #include <boost/json.hpp>
 

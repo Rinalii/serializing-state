@@ -118,7 +118,6 @@ boost::json::array ApiRequestHandler::CreateLootTypesJson(const model::Map& map)
             json_loot_type["color"] = loot_type.color;
         }
         
-        //json_loot_type["scale"] = loot_type.scale;
         if(loot_type.scale) {
             json_loot_type["scale"] = *loot_type.scale;
         }
@@ -154,8 +153,6 @@ std::string ApiRequestHandler::GetMapByIdResponseBody(std::string_view map_id) c
         json_map_by_id["roads"] = CreateRoadsJson(*map);
         json_map_by_id["buildings"] = CreateBuildingsJson(*map);
         json_map_by_id["offices"] = CreateOfficesJson(*map);
-        ///json_map_by_id["lootTypes"] = map->GetLootTypesJson();
-        /////json_map_by_id["lootTypes"] = CreateLootTypesJson(*map);
         json_map_by_id["lootTypes"] = CreateLootTypesJson(*map);
         return boost::json::serialize(json_map_by_id);
     }
@@ -176,69 +173,46 @@ std::string ApiRequestHandler::GetJoinResponseBody(std::shared_ptr<model::Map> m
 
 std::string ApiRequestHandler::GetPlayerListResponseBody(std::shared_ptr<const model::Player> player) const {
     boost::json::object responce_body_obj;
-    for (auto token_and_player : game_server_.GetTokenToPlayerMap()) {
-        if (token_and_player.second->GetPlayersSession() == player->GetPlayersSession()) {
-            std::shared_ptr<model::Player> tmp_player = token_and_player.second;
-            responce_body_obj[std::to_string(tmp_player->GetId())] = boost::json::object{{"name", tmp_player->GetName()}};
-        }
-    }
-    return boost::json::serialize(responce_body_obj);
-}
-/*
-std::string ApiRequestHandler::GetGameStateResponseBody(std::shared_ptr<const model::Player> player) const {
-    boost::json::object responce_body_obj;
-    boost::json::object players_json;
-    boost::json::object loot_objects_json;
-    for (auto token_and_player : game_server_.GetTokenToPlayerMap()) {
-        auto& tmp_player = token_and_player.second;
-        if (tmp_player->GetPlayersSession() == player->GetPlayersSession()) {
-            auto dog = tmp_player->GetDog();
-            boost::json::object player_json;
-            player_json["dir"] = dog->GetDirection();
-            player_json["pos"] = {dog->GetPosition().x, dog->GetPosition().y};
-            player_json["speed"] = {dog->GetSpeed().x, dog->GetSpeed().y};
-            players_json[std::to_string(tmp_player->GetId())] = player_json;
-        }
-    }
-    responce_body_obj["players"] = players_json;
-    return boost::json::serialize(responce_body_obj);
-}
-*/
-
-std::string ApiRequestHandler::GetGameStateResponseBody(std::shared_ptr<const model::Player> player) const {
-    boost::json::object responce_body_obj;
-    boost::json::object players_json;
-    boost::json::object loot_objects_json;
-    for (auto token_and_player : game_server_.GetTokenToPlayerMap()) {
-        auto& tmp_player = token_and_player.second;
-        if (tmp_player->GetPlayersSession() == player->GetPlayersSession()) {
-            auto dog = tmp_player->GetDog();
-            boost::json::object player_json;
-            player_json["dir"] = dog->GetDirection();
-            player_json["pos"] = {dog->GetPosition().x, dog->GetPosition().y};
-            player_json["speed"] = {dog->GetSpeed().x, dog->GetSpeed().y};
-
-            const model::Bag& bag = dog->GetBag();
-            boost::json::array items_in_bag_json;
-
-            for(const auto& item : bag.loot_objects) {
-                boost::json::object item_object_json;
-                item_object_json["id"] = item->GetId();
-                item_object_json["type"] = item->GetType();
-                
-                items_in_bag_json.push_back(item_object_json);
-            }
-
-            player_json["bag"] = items_in_bag_json;
-            player_json["score"] = dog->GetScore();
-
-            players_json[std::to_string(tmp_player->GetId())] = player_json;
-        }
-    }
-    responce_body_obj["players"] = players_json;
-
     const std::shared_ptr<model::GameSession> session = player->GetPlayersSession();
-    //const std::vector<model::LootObject>& loot_objects = session->GetLootObjects();
+    for (auto token_and_player : game_server_.GetTokenToPlayerMap(session)) {
+        std::shared_ptr<model::Player> tmp_player = token_and_player.second;
+        responce_body_obj[std::to_string(tmp_player->GetId())] = boost::json::object{{"name", tmp_player->GetName()}};
+    }
+    return boost::json::serialize(responce_body_obj);
+}
+
+std::string ApiRequestHandler::GetGameStateResponseBody(std::shared_ptr<const model::Player> player) const {
+    boost::json::object responce_body_obj;
+    boost::json::object players_json;
+    boost::json::object loot_objects_json;
+    const std::shared_ptr<model::GameSession> session = player->GetPlayersSession();
+    for (auto token_and_player : game_server_.GetTokenToPlayerMap(session)) {
+        auto& tmp_player = token_and_player.second;
+        
+        auto dog = tmp_player->GetDog();
+        boost::json::object player_json;
+        player_json["dir"] = dog->GetDirection();
+        player_json["pos"] = {dog->GetPosition().x, dog->GetPosition().y};
+        player_json["speed"] = {dog->GetSpeed().x, dog->GetSpeed().y};
+
+        const model::Bag& bag = dog->GetBag();
+        boost::json::array items_in_bag_json;
+
+        for(const auto& item : bag.loot_objects) {
+            boost::json::object item_object_json;
+            item_object_json["id"] = item->GetId();
+            item_object_json["type"] = item->GetType();
+            
+            items_in_bag_json.push_back(item_object_json);
+        }
+
+        player_json["bag"] = items_in_bag_json;
+        player_json["score"] = dog->GetScore();
+
+        players_json[std::to_string(tmp_player->GetId())] = player_json;
+    }
+    responce_body_obj["players"] = players_json;
+
     const std::unordered_map<int, std::shared_ptr<model::LootObject>>& loot_objects = session->GetLootObjects();
 
     for(const auto& [id, loot_object] : loot_objects) {
@@ -248,13 +222,7 @@ std::string ApiRequestHandler::GetGameStateResponseBody(std::shared_ptr<const mo
         loot_object_json["pos"] = {static_cast<double>(position.x), static_cast<double>(position.y)};
         loot_objects_json[std::to_string(id)] = loot_object_json;
     }
-    
-    //for(int i = 0; i < loot_objects.size(); ++i) {
-    //    boost::json::object loot_object_json;
-    //    loot_object_json["type"] = loot_objects.at(i).GetType();
-    //    loot_object_json["pos"] = {loot_objects.at(i).GetPosition().x, loot_objects.at(i).GetPosition().y};
-    //    loot_objects_json[std::to_string(i)] = loot_object_json;
-    //}
+
     responce_body_obj["lostObjects"] = loot_objects_json;
     return boost::json::serialize(responce_body_obj);
 }

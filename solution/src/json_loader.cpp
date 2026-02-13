@@ -133,6 +133,7 @@ void AddLootTypesAtMap(const boost::json::object& json_map_obj, model::Map& map)
         }
 
         map.SetLootTypes(loot_types);
+        map.SetLootTypesJson(json_loot_types_arr);
     }
 }
 
