@@ -59,7 +59,10 @@ int main(int argc, const char* argv[]) {
 
         std::filesystem::path config = std::filesystem::weakly_canonical(std::filesystem::path((command_line_args.config_file_path)));
         std::filesystem::path root = std::filesystem::weakly_canonical(std::filesystem::path((command_line_args.root_path)));
+        std::filesystem::path state = std::filesystem::weakly_canonical(std::filesystem::path((command_line_args.state_file_path)));
+
         unsigned int tick_period = command_line_args.tick_period;
+        unsigned int save_state_period = command_line_args.save_state_period;
         bool random_spawn = command_line_args.random_spawn;
 
         GameServer game_server(config);
@@ -72,8 +75,29 @@ int main(int argc, const char* argv[]) {
             ticker->Start();
         }
 
+        sig::scoped_connection conn1;
+        
         if (random_spawn) {
             game_server.SetRandSpawn();
+        }
+        if(!command_line_args.state_file_path.empty()) {
+            game_server.SetStateFile(state.string());
+            if(std::filesystem::exists(state)) {
+                game_server.Restore();
+            }
+        }
+
+        if(!command_line_args.state_file_path.empty() && save_state_period) {
+            game_server.SetSaveStatePeriod(save_state_period);
+            milliseconds save_period(save_state_period);
+
+            conn1 = game_server.DoOnTick([total = 0ms, save_period, &game_server](milliseconds delta) mutable {
+                total += delta;
+                if(save_period <= delta){
+                    game_server.Save();
+                }
+                
+            });
         }
 
         // 3. Добавляем асинхронный обработчик сигналов SIGINT и SIGTERM
@@ -100,6 +124,11 @@ int main(int argc, const char* argv[]) {
         RunWorkers(std::max(1u, num_threads), [&ioc] {
             ioc.run();
         });
+
+        if(!command_line_args.state_file_path.empty()) {
+            game_server.Save();
+        }
+        
 
     } catch (const std::exception& ex) {
         Logger::LogServerExitBecauseErr(ex);
