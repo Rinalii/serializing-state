@@ -12,17 +12,19 @@ namespace model {
 class Player;
 class GameSession;
 
-namespace detail {
-struct TokenTag {};
-}  // namespace detail
-
-using Token = util::Tagged<std::string, detail::TokenTag>;
-using TokenHasher = util::TaggedHasher<Token>;
-
 class Player {
 public:
     Player(const std::string& name) : name_(name), id_(++id_counter_){
-        dog_ = std::make_shared<Dog>();
+        dog_ = std::make_shared<Dog>(id_);
+    }
+    Player(const Dog& dog, std::string name, int id) : name_(name), id_(id){
+        dog_ = std::make_shared<Dog>(dog);
+    }
+    Player(const std::shared_ptr<Dog>& dog, std::string name, int id) : name_(name), id_(id){
+        dog_ = dog;
+    }
+    void SetIdCounter(int id_counter) {
+        id_counter_ = id_counter;
     }
 
     ~Player() {}
@@ -34,6 +36,12 @@ public:
     std::shared_ptr<GameSession> GetPlayersSession() {return session_;}
 
     void AddAndPrepareGameSession(std::shared_ptr<GameSession> session, std::shared_ptr<model::Map> map, bool is_rand_spawn);
+    int GetIdCounter() const {
+        return id_counter_;
+    }
+    void SetSession(const std::shared_ptr<GameSession>& session) {
+        session_ = session;
+    }
     
 private:
     std::string name_;
@@ -43,36 +51,6 @@ private:
     std::shared_ptr<GameSession> session_;
     static int id_counter_;
 };
-
-class PlayerTokens {
-public:
-
-    PlayerTokens() {}
-    ~PlayerTokens() {}
-
-    std::shared_ptr<Player> FindPlayer(const Token& token) const;
-    Token AddPlayer(const Player& player);
-    const std::unordered_map<Token, std::shared_ptr<Player>, TokenHasher>& GetTokenToPlayerMap() const;
-private:
-    
-    std::unordered_map<Token, std::shared_ptr<Player>, TokenHasher> token_to_player_;
-
-    std::random_device random_device_;
-    std::mt19937_64 generator1_{[this] {
-        std::uniform_int_distribution<std::mt19937_64::result_type> dist;
-        return dist(random_device_);
-    }()};
-    std::mt19937_64 generator2_{[this] {
-        std::uniform_int_distribution<std::mt19937_64::result_type> dist;
-        return dist(random_device_);
-    }()};
-
-    // Чтобы сгенерировать токен, получите из generator1_ и generator2_
-    // два 64-разрядных числа и, переведя их в hex-строки, склейте в одну.
-    // Вы можете поэкспериментировать с алгоритмом генерирования токенов,
-    // чтобы сделать их подбор ещё более затруднительным
-    Token GetToken();
-}; 
 
 }
 
