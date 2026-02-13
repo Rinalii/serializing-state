@@ -92,6 +92,10 @@ public:
         return std::unordered_map<model::Token, std::shared_ptr<model::Player>, model::TokenHasher>();
     }
 
+    std::shared_ptr<model::Player> AddRestoredPlayer(std::shared_ptr<model::GameSession> session, const model::Player& player, model::Token token){
+        return game_sessions_to_players_tok_[session].RestorePlayer(player, token);
+    }
+
     const std::unordered_map<std::shared_ptr<GameSession>, PlayerTokens>& GetSessions() const {
         return game_sessions_to_players_tok_;
     }

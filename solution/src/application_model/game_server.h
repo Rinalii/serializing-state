@@ -90,6 +90,10 @@ public:
         save_state_period_ = save_state_period;
     }
 
+    void Restore() {
+        model::Restore(game_, state_file_);
+    }
+
     void Save() {
         model::Save(game_, state_file_);
     }
