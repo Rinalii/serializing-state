@@ -24,14 +24,16 @@ CollectionResult TryCollectPoint(geom::Point2D a, geom::Point2D b, geom::Point2D
 struct Item {
     geom::Point2D position;
     double width;
+    Item(){}
     Item(geom::Point2D position, double width) : position(position), width(width){}
     virtual ~Item(){}
 };
 
 struct Gatherer {
-    geom::Point2D start_pos;
-    geom::Point2D end_pos;
-    double width;
+    geom::Point2D start_pos = {0., 0.};
+    geom::Point2D end_pos = {0., 0.};
+    double width = 0.;
+    Gatherer() {} 
     Gatherer(geom::Point2D start_pos, geom::Point2D end_pos, double width) 
     :start_pos(start_pos), end_pos(end_pos), width(width) {}
     virtual ~Gatherer(){}

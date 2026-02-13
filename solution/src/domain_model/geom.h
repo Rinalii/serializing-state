@@ -4,13 +4,6 @@
 
 namespace geom {
 
-using Dimension = int;
-using Coord = Dimension;
-
-struct Point {
-    Coord x, y;
-};
-
 struct Vec2D {
     Vec2D() = default;
     Vec2D(double x, double y)

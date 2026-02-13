@@ -14,9 +14,9 @@
 
 #include <optional>
 
+#include <boost/json.hpp>
 #include "collision_detector.h"
 
-#include "loot.h"
 
 namespace model_constants{
     const std::string X = "x";
@@ -93,14 +93,43 @@ public:
 
     bool IsOnArea(PointDouble position) const noexcept;
     PointDouble GetMaxPossiblePosition(PointDouble position) const noexcept;
-    std::pair<PointDouble, PointDouble> GetArea() const noexcept;
-    PointDouble GetRandomPosition() const noexcept;
+    std::pair<PointDouble, PointDouble> GetArea() const noexcept {
+        double width = 0.4;
+        PointDouble min;
+        PointDouble max;
+        if(start_.x < end_.x) {
+            min.x = start_.x - width;
+            max.x = end_.x + width;
+        } else {
+            max.x = start_.x + width;
+            min.x = end_.x - width;
+        }
+        if(start_.y < end_.y) {
+            min.y = start_.y - width;
+            max.y = end_.y + width;
+        } else {
+            max.y = start_.y + width;
+            min.y = end_.y - width;
+        }
+        return {min, max};
+    }
+    PointDouble GetRandomPosition() const noexcept {
+        std::pair<PointDouble, PointDouble> area = GetArea();
+        double x = GenerateRandomNumber(area.first.x, area.second.x);
+        double y = GenerateRandomNumber(area.first.y, area.second.y);
+        return PointDouble{x, y};
+    }
 
 private:
     Point start_;
     Point end_;
 
-    static double GenerateRandomNumber(double min, double max);
+    static double GenerateRandomNumber(double min, double max) {
+        static std::random_device random_device;
+        static std::mt19937 gen(random_device());
+        std::uniform_real_distribution<>distr(min, max);
+        return distr(gen);
+    }
 };
 
 class Building {
@@ -109,7 +138,9 @@ public:
         : bounds_{bounds} {
     }
 
-    const Rectangle& GetBounds() const noexcept;
+    const Rectangle& GetBounds() const noexcept {
+        return bounds_;
+    }
 
 private:
     Rectangle bounds_;
@@ -120,15 +151,26 @@ public:
     using Id = util::Tagged<std::string, Office>;
 
     Office(Id id, Point position, Offset offset) noexcept
-        : Item({static_cast<double>(position.x), static_cast<double>(position.y)}, model_constants::BASE_WIDTH)
+        : Item({static_cast<double>(position.x), static_cast<double>(position.y)}, 0.5)
         , id_{std::move(id)}
         , offset_{offset} {
     }
 
-    const Id& GetId() const noexcept;
-    geom::Point2D GetPosition() const noexcept;
-    double GetWidth() const;
-    Offset GetOffset() const noexcept;
+    const Id& GetId() const noexcept {
+        return id_;
+    }
+
+    geom::Point2D GetPosition() const noexcept {
+        return position;
+    }
+
+    double GetWidth() const {
+        return width;
+    }
+
+    Offset GetOffset() const noexcept {
+        return offset_;
+    }
 
 private:
     Id id_;
@@ -147,6 +189,16 @@ private:
     std::unordered_map<Coord, size_t> coord_to_idx_ver_;
 };
 
+struct LootType {
+    std::string name;
+    std::string file;
+    std::string type;
+    std::optional<int> rotation;
+    std::string color;
+    std::optional<double> scale;
+    int value = 0;
+};
+
 class Map {
 public:
     using Id = util::Tagged<std::string, Map>;
@@ -159,14 +211,34 @@ public:
         , name_(std::move(name)) {
     }
 
-    const Id& GetId() const noexcept;
-    const std::string& GetName() const noexcept;
-    const Buildings& GetBuildings() const noexcept;
-    const Roads& GetRoads() const noexcept;
-    const Offices& GetOffices() const noexcept;
+    const Id& GetId() const noexcept {
+        return id_;
+    }
 
-    void AddRoad(const Road& road);
-    void AddBuilding(const Building& building);
+    const std::string& GetName() const noexcept {
+        return name_;
+    }
+
+    const Buildings& GetBuildings() const noexcept {
+        return buildings_;
+    }
+
+    const Roads& GetRoads() const noexcept {
+        return roads_;
+    }
+
+    const Offices& GetOffices() const noexcept {
+        return offices_;
+    }
+
+    void AddRoad(const Road& road) {
+        roads_.emplace_back(road);
+    }
+
+    void AddBuilding(const Building& building) {
+        buildings_.emplace_back(building);
+    }
+
     void AddOffice(Office office);
 
     PointDouble GetRandPosition() const;
@@ -181,13 +253,44 @@ public:
     std::vector<size_t> GetRoadIndexes(Point position) const;
     std::vector<Road> GetRoadsByPosition(Point position) const;
 
-    PointDouble GetRandomPosition() const;
+    PointDouble GetRandomPosition() const {
+        if (roads_.empty()) {
+            throw std::runtime_error("No roads on the map");
+        }
 
-    void SetLootTypes(const std::vector<LootType>& loot_types);
-    int GetNumberOfLootTypes() const;
-    const std::vector<LootType>& GetLootTypes() const;
-    int GetRandomTypeOfLoot() const;
-    std::pair<int, int> GetRandomTypeAndValueOfLoot() const;
+        int rand_number_of_road = GenerateRandomNumber(0, roads_.size()-1);
+
+        const Road& road = roads_[rand_number_of_road];
+        return road.GetRandomPosition();
+    }
+
+    void SetLootTypesJson(const boost::json::array& loot_types) {
+        loot_types_json_ = loot_types;
+    }
+
+    void SetLootTypes(const std::vector<LootType>& loot_types) {
+        loot_types_ = loot_types;
+    }
+
+    int GetNumberOfLootTypes() const {
+        return loot_types_.size();
+    }
+
+    const boost::json::array& GetLootTypesJson() {
+        return loot_types_json_;
+    }
+    const std::vector<LootType>& GetLootTypes() const {
+        return loot_types_;
+    }
+
+    int GetRandomTypeOfLoot() const {
+        return GenerateRandomNumber(0, GetNumberOfLootTypes()-1);
+    }
+
+    std::pair<int, int> GetRandomTypeAndValueOfLoot() const {
+        int type = GenerateRandomNumber(0, GetNumberOfLootTypes()-1);
+        return {type, loot_types_[type].value};
+    }
 
 private:
     using OfficeIdToIndex = std::unordered_map<Office::Id, size_t, util::TaggedHasher<Office::Id>>;
@@ -202,12 +305,26 @@ private:
     double dog_speed_;
     int bag_capacity_ = 3;
 
+
     RoadIndexes coords_to_road_idx_;
 
+    boost::json::array loot_types_json_;
     std::vector<LootType> loot_types_;
     
-    static int GenerateRandomNumber(int min, int max);
-    static double GenerateRandomNumber(double min, double max);
+
+    static int GenerateRandomNumber(int min, int max) {
+        static std::random_device random_device;
+        static std::mt19937 gen(random_device());
+        std::uniform_int_distribution<>distr(min, max);
+        return distr(gen);
+    }
+
+    static double GenerateRandomNumber(double min, double max) {
+        static std::random_device random_device;
+        static std::mt19937 gen(random_device());
+        std::uniform_real_distribution<>distr(min, max);
+        return distr(gen);
+    }
 };
 
 enum class Direction{
@@ -229,14 +346,11 @@ struct Bag {
     void AddLoot(const std::shared_ptr<LootObject>& item) {
         loot_objects.push_back(item);
     }
-    void CleanBag() {
-        loot_objects.clear();
-    }
 };
 
 class Dog : public collision_detector::Gatherer {
 public:
-    explicit Dog() : Gatherer(geom::Point2D{0., 0.}, geom::Point2D{0., 0.}, model_constants::DOG_WIDTH), id_(++id_counter_) {}
+    explicit Dog(int player_id) : Gatherer(geom::Point2D{0., 0.}, geom::Point2D{0., 0.}, 0.6), id_(++id_counter_), player_id_(player_id){}
     ~Dog() {}
 
     int GetId() const {return id_;}
@@ -260,10 +374,16 @@ public:
         start_pos = end_pos;
         end_pos = next_pos;
     }
+    void SetWidth(double width) {
+        width = width;
+    }
     void CleanBag() {
-        bag_.CleanBag();
+        bag_.loot_objects.clear();
     }
     Bag& GetBag() {
+        return bag_;
+    }
+    const Bag& GetBag() const {
         return bag_;
     }
     void SetPositionEndGatherer() {position_ = {end_pos.x, end_pos.y};}
@@ -273,8 +393,28 @@ public:
     int GetScore() const {
         return score;
     }
+    int GetIdCounter() const{
+        return id_counter_;
+    }
+    void SetIdCounter(int id_counter) const{
+        id_counter_ = id_counter;
+    }
+    double GetSpeedValue() const{
+        return speed_value_;
+    }
+    void SetId(int id) {
+        id_ = id;
+    }
+    void SetBag(const Bag& bag) {
+        bag_ = bag;
+    }
+
+    Direction GetDirectionEnum() const {
+        return direction_;
+    }
 private:
     int id_;
+    int player_id_;
     static int id_counter_;
 
     PointDouble position_;

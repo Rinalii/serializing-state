@@ -123,60 +123,6 @@ PointDouble Road::GetMaxPossiblePosition(PointDouble position) const noexcept {
     return max_possible;
 }
 
-std::pair<PointDouble, PointDouble> Road::GetArea() const noexcept {
-    double width = 0.4;
-    PointDouble min;
-    PointDouble max;
-    if(start_.x < end_.x) {
-        min.x = start_.x - width;
-        max.x = end_.x + width;
-    } else {
-        max.x = start_.x + width;
-        min.x = end_.x - width;
-    }
-    if(start_.y < end_.y) {
-        min.y = start_.y - width;
-        max.y = end_.y + width;
-    } else {
-        max.y = start_.y + width;
-        min.y = end_.y - width;
-    }
-    return {min, max};
-}
-PointDouble Road::GetRandomPosition() const noexcept {
-    std::pair<PointDouble, PointDouble> area = GetArea();
-    double x = GenerateRandomNumber(area.first.x, area.second.x);
-    double y = GenerateRandomNumber(area.first.y, area.second.y);
-    return PointDouble{x, y};
-}
-
-double Road::GenerateRandomNumber(double min, double max) {
-    static std::random_device random_device;
-    static std::mt19937 gen(random_device());
-    std::uniform_real_distribution<>distr(min, max);
-    return distr(gen);
-}
-
-const Rectangle& Building::GetBounds() const noexcept {
-    return bounds_;
-}
-
-const Office::Id& Office::GetId() const noexcept {
-    return id_;
-}
-
-geom::Point2D Office::GetPosition() const noexcept {
-    return position;
-}
-
-double Office::GetWidth() const {
-    return width;
-}
-
-Offset Office::GetOffset() const noexcept {
-    return offset_;
-}
-
 void RoadIndexes::AddRoadIndexes(const std::vector<Road>& roads) {
     for(size_t i=0; i<roads.size(); ++i) {
         const Road& road = roads[i];
@@ -199,34 +145,6 @@ std::vector<size_t> RoadIndexes::GetRoadIndexes(Point position) const {
         res.push_back(it2->second);
     }
     return res;
-}
-
-const Map::Id& Map::GetId() const noexcept {
-    return id_;
-}
-
-const std::string& Map::GetName() const noexcept {
-    return name_;
-}
-
-const Map::Buildings& Map::GetBuildings() const noexcept {
-    return buildings_;
-}
-
-const Map::Roads& Map::GetRoads() const noexcept {
-    return roads_;
-}
-
-const Map::Offices& Map::GetOffices() const noexcept {
-    return offices_;
-}
-
-void Map::AddRoad(const Road& road) {
-    roads_.emplace_back(road);
-}
-
-void Map::AddBuilding(const Building& building) {
-    buildings_.emplace_back(building);
 }
 
 void Map::AddOffice(Office office) {
@@ -295,52 +213,6 @@ std::vector<Road> Map::GetRoadsByPosition(Point position) const {
         res.push_back(roads_[idx]);
     }
     return res;
-}
-
-PointDouble Map::GetRandomPosition() const {
-    if (roads_.empty()) {
-        throw std::runtime_error("No roads on the map");
-    }
-
-    int rand_number_of_road = GenerateRandomNumber(0, roads_.size()-1);
-
-    const Road& road = roads_[rand_number_of_road];
-    return road.GetRandomPosition();
-}
-
-void Map::SetLootTypes(const std::vector<LootType>& loot_types) {
-    loot_types_ = loot_types;
-}
-
-int Map::GetNumberOfLootTypes() const {
-    return loot_types_.size();
-}
-
-const std::vector<LootType>& Map::GetLootTypes() const {
-    return loot_types_;
-}
-
-int Map::GetRandomTypeOfLoot() const {
-    return GenerateRandomNumber(0, GetNumberOfLootTypes()-1);
-}
-
-std::pair<int, int> Map::GetRandomTypeAndValueOfLoot() const {
-    int type = GenerateRandomNumber(0, GetNumberOfLootTypes()-1);
-    return {type, loot_types_[type].value};
-}
-
-int Map::GenerateRandomNumber(int min, int max) {
-    static std::random_device random_device;
-    static std::mt19937 gen(random_device());
-    std::uniform_int_distribution<>distr(min, max);
-    return distr(gen);
-}
-
-double Map::GenerateRandomNumber(double min, double max) {
-    static std::random_device random_device;
-    static std::mt19937 gen(random_device());
-    std::uniform_real_distribution<>distr(min, max);
-    return distr(gen);
 }
 
 void Dog::SetDirection(const std::string& direction_str) {
