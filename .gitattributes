@@ -1,2 +1,2 @@
-precode/static/* linguist-vendored
-solution/static/* linguist-vendored
+precode/static/** linguist-vendored
+solution/static/** linguist-vendored
