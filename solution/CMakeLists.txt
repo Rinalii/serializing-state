@@ -4,7 +4,6 @@ project(game_server CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-#conan_basic_setup()
 conan_basic_setup(TARGETS)
 
 find_package(Boost 1.78.0 REQUIRED)
@@ -27,9 +26,13 @@ add_library(MyLib STATIC
 	src/domain_model/tagged.h
 	src/domain_model/loot_generator.cpp
 	src/domain_model/loot_generator.h
-	src/domain_model/loot.h
+	src/application_model/game.h
+	src/application_model/game.cpp
 	src/application_model/model_app.h
 	src/application_model/model_app.cpp
+	src/application_model/player_tokens.h
+	src/serialization/model_serialization.h
+	src/serialization/model_serialization.cpp
 	src/application_model/game_server.h
 	src/application_model/game_server.cpp
 )
@@ -55,11 +58,9 @@ add_executable(game_server
 	src/command_line.h
 	src/ticker.h
 )
-#target_include_directories(game_server PRIVATE CONAN_PKG::boost)
 target_link_libraries(game_server PRIVATE Threads::Threads CONAN_PKG::boost MyLib)
 
 add_executable(game_server_tests
-    tests/loot_generator_tests.cpp
+    tests/model_serialization.cpp
 )
-#target_include_directories(game_server_tests PRIVATE  CONAN_PKG::boost)
 target_link_libraries(game_server_tests PRIVATE CONAN_PKG::catch2 CONAN_PKG::boost Threads::Threads MyLib) 
